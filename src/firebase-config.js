@@ -4,16 +4,12 @@
 // Эти значения НЕ секретные — они всё равно видны в браузере любому игроку.
 // Защищают базу правила Firestore из файла firestore.rules.
 //
-// Пока здесь null — рейтинг работает локально (в браузере игрока).
-export const firebaseConfig = null;
-
-/* Пример заполненного конфига:
+// Если поставить здесь null — рейтинг будет работать локально (в браузере игрока).
 export const firebaseConfig = {
-  apiKey: 'AIza...',
-  authDomain: 'my-cats-game.firebaseapp.com',
-  projectId: 'my-cats-game',
-  storageBucket: 'my-cats-game.appspot.com',
-  messagingSenderId: '1234567890',
-  appId: '1:1234567890:web:abcdef',
+  apiKey: 'AIzaSyDa8P7QjLb5e7MobW1SG05Yq633xbRa__I',
+  authDomain: 'puhomeh.firebaseapp.com',
+  projectId: 'puhomeh',
+  storageBucket: 'puhomeh.firebasestorage.app',
+  messagingSenderId: '1092682476775',
+  appId: '1:1092682476775:web:782f0578ae33b6c5de8642',
 };
-*/
