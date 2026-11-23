@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Правила Cloud Firestore для таблицы рекордов.
+// Любой может читать топ и добавить СВОЙ результат; менять и удалять чужие — нельзя.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /scores/{scoreId} {
+      allow get: if true;
+      // Читать можно только ограниченными порциями — защита от выкачивания всей коллекции
+      allow list: if request.query.limit <= 50;
+
+      allow create: if
+        request.resource.data.keys().hasOnly(['name', 'time', 'createdAt']) &&
+        request.resource.data.keys().hasAll(['name', 'time', 'createdAt']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() >= 1 &&
+        request.resource.data.name.size() <= 12 &&
+        request.resource.data.time is number &&
+        request.resource.data.time >= 10 &&      // быстрее 10 секунд собрать 12 штук еды невозможно
+        request.resource.data.time <= 3600 &&
+        request.resource.data.createdAt == request.time;
+
+      allow update, delete: if false;
+    }
+
+    // Всё остальное в базе закрыто
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

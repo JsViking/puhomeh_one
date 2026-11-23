@@ -1,0 +1,214 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0d0f1a;
+  color: #fff;
+  font-family: 'DotGothic16', ui-monospace, monospace;
+  /* Телефон: без прокрутки, зума, выделения текста и синей подсветки касаний */
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Безопасные отступы под «чёлку» и полоску жестов */
+:root {
+  --sat: max(12px, env(safe-area-inset-top));
+  --sar: max(12px, env(safe-area-inset-right));
+  --sab: max(12px, env(safe-area-inset-bottom));
+  --sal: max(12px, env(safe-area-inset-left));
+}
+
+canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.hidden { display: none !important; }
+
+/* Что показывать на клавиатуре, а что — на сенсорном экране */
+.touch-only { display: none; }
+@media (pointer: coarse) {
+  .touch-only { display: revert; }
+  .kb-only { display: none !important; }
+}
+
+/* Окна в духе JRPG 90-х: синий градиент и двойная белая рамка */
+.box, .window, .tool, .meow {
+  background: linear-gradient(#2e3f96, #141c52);
+  border: 3px solid #fff;
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px #141c52, 6px 6px 0 3px rgba(0, 0, 0, 0.35);
+  text-shadow: 2px 2px 0 #000;
+}
+
+#hud {
+  position: fixed;
+  top: var(--sat);
+  left: var(--sal);
+  right: calc(var(--sar) + 160px); /* не наезжаем на панель кнопок справа */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.box { padding: 6px 14px; font-size: 20px; white-space: nowrap; }
+.label { color: #ffd25e; }
+.lives { color: #ff5c8a; letter-spacing: 2px; }
+.lives .lost { color: #4a4f7a; }
+
+/* Панель переключателей справа сверху */
+.toolbar {
+  position: fixed;
+  top: var(--sat);
+  right: var(--sar);
+  display: flex;
+  gap: 10px;
+  z-index: 5;
+}
+.tool, .meow {
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.tool { width: 42px; height: 42px; padding: 0; font-size: 18px; }
+.tool.off { opacity: 0.45; }
+.tool.on { color: #ffd25e; }
+.tool:active, .meow:active { transform: translate(2px, 2px); box-shadow: 0 0 0 3px #141c52, 3px 3px 0 3px rgba(0, 0, 0, 0.35); }
+
+/* Большая кнопка «мяу» под правый большой палец */
+.meow {
+  position: fixed;
+  right: calc(var(--sar) + 6px);
+  bottom: calc(var(--sab) + 6px);
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  font-size: 17px;
+  color: #ffd25e;
+}
+
+/* Плавающий джойстик */
+.joy-base {
+  position: fixed;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.55);
+  background: rgba(20, 28, 82, 0.35);
+  pointer-events: none;
+  z-index: 4;
+}
+.joy-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: linear-gradient(#2e3f96, #141c52);
+  box-shadow: 0 0 0 3px #141c52;
+}
+
+#help {
+  position: fixed;
+  bottom: var(--sab);
+  left: var(--sal);
+  right: var(--sar);
+  text-align: center;
+  font-size: 15px;
+  opacity: 0.9;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  background: rgba(10, 12, 30, 0.3);
+  padding: calc(var(--sat) + 52px) var(--sar) var(--sab) var(--sal); /* сверху место под панель кнопок */
+  box-sizing: border-box;
+  overflow-y: auto; /* телефон боком: окно выше экрана — прокручивается */
+  touch-action: pan-y;
+}
+.window {
+  padding: 24px 36px;
+  text-align: center;
+  max-width: 620px;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 18px;
+  line-height: 1.5;
+  margin: auto 0;
+}
+/* DotGothic16 рисует кириллицу «моноширинно и широко», поэтому заголовок мельче и без разрядки */
+h1 { margin: 0; font-size: clamp(28px, 7vw, 44px); font-weight: normal; color: #ffd25e; letter-spacing: 1px; line-height: 1.2; overflow-wrap: anywhere; }
+h2 { margin: 4px 0 14px; font-size: clamp(18px, 4.5vw, 24px); font-weight: normal; }
+.small { font-size: 14px; opacity: 0.7; }
+.blink { color: #ffd25e; animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Таблица рекордов */
+.board-wrap { margin-top: 14px; }
+h3 { margin: 0 0 6px; font-size: 18px; font-weight: normal; color: #ffd25e; }
+.board {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 17px;
+}
+.board td { padding: 2px 8px; border-bottom: 1px dashed rgba(255, 255, 255, 0.2); }
+.board td:first-child { width: 3em; text-align: left; }
+.board td:nth-child(2) { text-align: left; overflow-wrap: anywhere; }
+.board td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.board tr.me td { color: #ffd25e; animation: blink 1s steps(2) infinite; }
+.board td.empty { text-align: center; opacity: 0.7; border: none; }
+#title-board .board { font-size: 15px; }
+
+/* Кнопки и поле ввода в окнах */
+#entry { margin: 10px 0 4px; }
+#entry p { margin: 4px 0; }
+.window input, .window button {
+  font: inherit;
+  font-size: 18px;
+  color: #fff;
+  background: #0b1036;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  padding: 6px 12px;
+  margin: 3px;
+  touch-action: manipulation;
+}
+.window input { width: 12em; max-width: 60%; user-select: text; -webkit-user-select: text; }
+.window input:focus { outline: 2px solid #ffd25e; }
+.window button { cursor: pointer; background: #2e3f96; }
+.window button.again { color: #ffd25e; font-size: 20px; padding: 8px 20px; }
+
+/* Телефон в портрете */
+@media (max-width: 600px) {
+  #hud { gap: 8px; right: calc(var(--sar) + 52px); }
+  .box { padding: 3px 8px; font-size: 15px; }
+  .toolbar { flex-direction: column; gap: 8px; }
+  .tool { width: 38px; height: 38px; font-size: 16px; }
+  .overlay { padding-top: var(--sat); padding-right: calc(var(--sar) + 50px); }
+  .window { padding: 16px 14px; font-size: 15px; }
+  .board, #title-board .board { font-size: 14px; }
+  .board td { padding: 2px 4px; }
+}
+
+/* Телефон боком: мало высоты */
+@media (max-height: 500px) {
+  .window { padding: 12px 20px; font-size: 15px; line-height: 1.35; }
+  h2 { margin-bottom: 6px; }
+  .board-wrap { margin-top: 6px; }
+}

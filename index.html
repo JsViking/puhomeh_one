@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0f1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Котики: приключения Пухомеха</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="gfx"></canvas>
+
+  <div id="hud" class="hidden">
+    <div class="box"><span class="label">ЕДА</span> <span id="score">0/12</span></div>
+    <div class="box"><span class="label">ВРЕМЯ</span> <span id="time">00:00</span></div>
+    <div class="box"><span class="label">ЖИЗНИ</span> <span id="lives" class="lives">♥♥♥</span></div>
+  </div>
+
+  <!-- Кнопки-переключатели: работают и мышью, и пальцем -->
+  <div id="toolbar" class="toolbar">
+    <button id="btn-night" class="tool" tabindex="-1" title="День / ночь (N)" aria-label="День или ночь">☾</button>
+    <button id="btn-music" class="tool" tabindex="-1" title="Музыка (M)" aria-label="Музыка">♪</button>
+    <button id="btn-crt" class="tool" tabindex="-1" title="CRT-эффект (C)" aria-label="CRT-эффект">TV</button>
+  </div>
+
+  <!-- Только на сенсорных экранах -->
+  <button id="btn-meow" class="meow touch-only hidden" tabindex="-1" aria-label="Мяу">МЯУ</button>
+
+  <div id="help" class="hidden kb-only">WASD / стрелки — идти, убегай от собак · Пробел — мяу · N — ночь · M — музыка · C — CRT</div>
+
+  <div id="title" class="overlay">
+    <div class="window">
+      <h1>Котики</h1>
+      <h2>Приключения Пухомеха</h2>
+      <p>Пухомех проголодался! Обойди городок и собери всю еду.<br>Берегись собак — они гоняются за котиком!</p>
+      <p class="touch-only small">Веди пальцем по экрану — котик побежит туда.</p>
+      <p class="blink"><span class="kb-only">▶ Нажми любую клавишу</span><span class="touch-only">▶ Коснись, чтобы начать</span></p>
+      <div id="title-board" class="board-wrap">
+        <h3>Рекорды</h3>
+        <table id="title-table" class="board"></table>
+      </div>
+    </div>
+  </div>
+
+  <div id="win" class="overlay hidden">
+    <div class="window">
+      <h1>Вкуснотища!</h1>
+      <h2>Пухомех сыт и доволен</h2>
+      <p>Время: <span id="final" class="label">00:00</span></p>
+      <form id="entry" class="hidden" autocomplete="off">
+        <p class="label">Новый рекорд! Как зовут котика?</p>
+        <input id="entry-name" maxlength="12" placeholder="Имя" spellcheck="false" enterkeyhint="done">
+        <button type="submit">OK</button>
+        <button type="button" id="entry-skip">Пропустить</button>
+      </form>
+      <div class="board-wrap">
+        <h3>Рекорды</h3>
+        <table id="win-table" class="board"></table>
+      </div>
+      <p id="win-hint"><button type="button" class="again">▶ Ещё раз <span class="kb-only">(R)</span></button></p>
+    </div>
+  </div>
+
+  <div id="lose" class="overlay hidden">
+    <div class="window">
+      <h1>Мяу…</h1>
+      <h2>Собаки поймали Пухомеха</h2>
+      <p>Собрано еды: <span id="lose-score" class="label">0/12</span></p>
+      <p><button type="button" class="again">▶ Попробовать ещё <span class="kb-only">(R)</span></button></p>
+    </div>
+  </div>
+
+  <div id="nogpu" class="overlay hidden">
+    <div class="window">
+      <h2>WebGPU недоступен</h2>
+      <p id="nogpu-reason" class="small"></p>
+      <p>Нужен Chrome / Edge 113+ (на Android — Chrome 121+) или Safari 26+.<br>
+        Страницу нужно открыть по https:// или через http://localhost — по обычному http с IP-адресом WebGPU выключен.</p>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
