@@ -6,7 +6,7 @@
 // Проекция 2:1 (тайл 32×16 px):  sx = (u - v) * 16,  sy = (u + v) * 8 - z
 
 export const OUTLINE = [42, 26, 46];
-const L = (() => { const v = [-0.35, 0.6, 0.72]; const l = Math.hypot(...v); return v.map((x) => x / l); })();
+export const L = (() => { const v = [-0.35, 0.6, 0.72]; const l = Math.hypot(...v); return v.map((x) => x / l); })();
 
 export function hash(a, b = 0, c = 0) {
   let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1440670441);

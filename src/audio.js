@@ -112,9 +112,17 @@ export function lose() {
 }
 
 // ---------- Фоновая музыка ----------
+// Две песни: обычная (городская) и новогодняя. Запись: такты по 16 шестнадцатых, [нота, длительность].
+
+const NOTE_IDX = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+function freq(name) {
+  const m = /^([A-G]#?)(\d)$/.exec(name);
+  const midi = (Number(m[2]) + 1) * 12 + NOTE_IDX[m[1]];
+  return 440 * 2 ** ((midi - 69) / 12);
+}
+
 // Мажорная пентатоника ре (D E F# A B) — звучит как японская деревенская мелодия.
-// 8 тактов по 16 шестнадцатых; запись [нота, длительность в шестнадцатых].
-const MELODY = [
+const TOWN = [
   [['A4', 2], ['D5', 2], ['E5', 2], ['F#5', 2], ['A5', 4], ['F#5', 2], ['E5', 2]],
   [['D5', 2], ['E5', 2], ['F#5', 2], ['E5', 2], ['D5', 4], ['B4', 4]],
   [['A4', 2], ['B4', 2], ['D5', 2], ['E5', 2], ['F#5', 2], ['A5', 2], ['B5', 2], ['A5', 2]],
@@ -124,38 +132,63 @@ const MELODY = [
   [['D5', 2], ['E5', 2], ['F#5', 2], ['A5', 2], ['F#5', 2], ['E5', 2], ['D5', 2], ['B4', 2]],
   [['A4', 4], ['B4', 2], ['E5', 2], ['D5', 8]],
 ];
-// Аккорд на каждый такт: бас + арпеджио
-const CHORDS = [
+const TOWN_CHORDS = [
   ['D3', 'D4', 'F#4', 'A4'], ['B2', 'B3', 'D4', 'F#4'], ['G2', 'G3', 'B3', 'D4'], ['A2', 'A3', 'C#4', 'E4'],
   ['G2', 'G3', 'B3', 'D4'], ['D3', 'D4', 'F#4', 'A4'], ['E3', 'E4', 'G4', 'B4'], ['A2', 'D4', 'F#4', 'A4'],
 ];
 
-const NOTE_IDX = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
-function freq(name) {
-  const m = /^([A-G]#?)(\d)$/.exec(name);
-  const midi = (Number(m[2]) + 1) * 12 + NOTE_IDX[m[1]];
-  return 440 * 2 ** ((midi - 69) / 12);
+// «Jingle Bells» (Джеймс Пьерпонт, 1857 — общественное достояние), припев, до мажор.
+const JINGLE_A = [['E5', 2], ['E5', 2], ['E5', 4], ['E5', 2], ['E5', 2], ['E5', 4]];
+const JINGLE_B = [['E5', 2], ['G5', 2], ['C5', 3], ['D5', 1], ['E5', 8]];
+const JINGLE_C = [['F5', 2], ['F5', 2], ['F5', 3], ['F5', 1], ['F5', 2], ['E5', 2], ['E5', 2], ['E5', 1], ['E5', 1]];
+const JINGLE = [
+  JINGLE_A, JINGLE_B, JINGLE_C,
+  [['E5', 2], ['D5', 2], ['D5', 2], ['E5', 2], ['D5', 4], ['G5', 4]],
+  JINGLE_A, JINGLE_B, JINGLE_C,
+  [['G5', 2], ['G5', 2], ['F5', 2], ['D5', 2], ['C5', 8]],
+];
+const C_MAJ = ['C3', 'C4', 'E4', 'G4'], F_MAJ = ['F2', 'F3', 'A3', 'C4'], G_MAJ = ['G2', 'G3', 'B3', 'D4'];
+const JINGLE_CHORDS = [C_MAJ, C_MAJ, F_MAJ, G_MAJ, C_MAJ, C_MAJ, F_MAJ, C_MAJ];
+
+function compile(melody, chords, bpm, style) {
+  const at = new Map();
+  melody.forEach((bar, b) => {
+    let s = b * 16;
+    for (const [n, len] of bar) { at.set(s, [freq(n), len]); s += len; }
+  });
+  return { at, chords: chords.map((c) => c.map(freq)), steps: 16 * melody.length, step: 60 / bpm / 4, style };
 }
-
-const BPM = 116;
-const STEP = 60 / BPM / 4; // длительность шестнадцатой
-const STEPS = 16 * MELODY.length;
-
-// Разворачиваем мелодию в таблицу «шаг -> нота»
-const melodyAt = new Map();
-MELODY.forEach((bar, b) => {
-  let s = b * 16;
-  for (const [n, len] of bar) { melodyAt.set(s, [freq(n), len]); s += len; }
-});
-const chordFreqs = CHORDS.map((c) => c.map(freq));
+const SONGS = {
+  standard: compile(TOWN, TOWN_CHORDS, 116, 'town'),
+  winter: compile(JINGLE, JINGLE_CHORDS, 132, 'jingle'),
+};
+let song = SONGS.standard;
 
 let playing = false, step = 0, nextTime = 0, timer = null;
 
 function playStep(s, t) {
+  const STEP = song.step;
   const bar = Math.floor(s / 16), i = s % 16;
-  const [bass, ...tones] = chordFreqs[bar];
+  const [bass, ...tones] = song.chords[bar];
+  const m = song.at.get(s);
 
-  const m = melodyAt.get(s);
+  if (song.style === 'jingle') {
+    if (m) {
+      note(m[0], t, m[1] * STEP * 0.9, { wave: pulse25, vol: 0.05, dest: musicBus, release: 0.05 });
+      note(m[0] * 2, t, 0.35, { type: 'triangle', vol: 0.035, dest: musicBus }); // колокольчик на октаву выше
+    }
+    // бас «ум-па»: тоника на долю, квинта на слабую
+    if (i % 4 === 0) note(i % 8 === 0 ? bass : bass * 1.5, t, STEP * 2.5, { type: 'triangle', vol: 0.14, dest: musicBus, release: 0.03 });
+    // аккорд на слабые восьмые
+    if (i % 4 === 2) tones.forEach((f) => note(f * 2, t, STEP * 1.2, { wave: pulse12, vol: 0.01, dest: musicBus }));
+    // бубенцы саней и лёгкий бит
+    if (i % 2 === 0) noise(t, 0.06, { vol: i % 4 === 0 ? 0.045 : 0.03, freq: 7500 });
+    if (i % 4 === 3) noise(t, 0.035, { vol: 0.02, freq: 9500 });
+    if (i === 4 || i === 12) noise(t, 0.09, { vol: 0.045, type: 'bandpass', freq: 2500 });
+    if (i === 0 || i === 8) note(140, t, 0.12, { type: 'sine', vol: 0.16, slide: 45, dest: musicBus });
+    return;
+  }
+
   if (m) {
     note(m[0], t, m[1] * STEP * 0.9, { wave: pulse25, vol: 0.05, dest: musicBus, release: 0.05 });
     // «эхо» на октаву выше тихо и с задержкой — типичный приём 8-бит композиторов
@@ -176,9 +209,18 @@ function schedule() {
   if (nextTime < ctx.currentTime - 0.2) nextTime = ctx.currentTime + 0.05;
   while (nextTime < ctx.currentTime + 0.15) {
     playStep(step, nextTime);
-    nextTime += STEP;
-    step = (step + 1) % STEPS;
+    nextTime += song.step;
+    step = (step + 1) % song.steps;
   }
+}
+
+// Переключить песню: 'standard' | 'winter'. Если музыка играет — новая начинается сразу с начала.
+export function setSong(name) {
+  const next = SONGS[name] ?? SONGS.standard;
+  if (next === song) return;
+  song = next;
+  step = 0;
+  if (ctx && playing) nextTime = ctx.currentTime + 0.1;
 }
 
 export function startMusic() {

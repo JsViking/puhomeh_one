@@ -23,6 +23,7 @@
 
   <!-- Кнопки-переключатели: работают и мышью, и пальцем -->
   <div id="toolbar" class="toolbar">
+    <button id="btn-theme" class="tool" tabindex="-1" title="Новогодний режим (T)" aria-label="Новогодний режим">❄</button>
     <button id="btn-night" class="tool" tabindex="-1" title="День / ночь (N)" aria-label="День или ночь">☾</button>
     <button id="btn-music" class="tool" tabindex="-1" title="Музыка (M)" aria-label="Музыка">♪</button>
     <button id="btn-crt" class="tool" tabindex="-1" title="CRT-эффект (C)" aria-label="CRT-эффект">TV</button>
@@ -32,13 +33,15 @@
   <!-- Только на сенсорных экранах -->
   <button id="btn-meow" class="meow touch-only hidden" tabindex="-1" aria-label="Мяу">МЯУ</button>
 
-  <div id="help" class="hidden kb-only">WASD / стрелки — идти, убегай от собак · Пробел — мяу · N — ночь · M — музыка · C — CRT</div>
+  <div id="help" class="hidden kb-only">WASD / стрелки — идти, убегай от собак · Пробел — мяу · T — новогодний режим · N — ночь · M — музыка · C — CRT</div>
 
   <div id="title" class="overlay">
     <div class="window">
       <h1>Котики</h1>
       <h2>Приключения Пухомеха</h2>
-      <p>Пухомех проголодался! Обойди городок и собери всю еду.<br>Берегись собак — они гоняются за котиком!</p>
+      <p class="winter-only label">✦ С наступающим Новым годом! ✦</p>
+      <p class="standard-only">Пухомех проголодался! Обойди городок и собери всю еду.<br>Берегись собак — они гоняются за котиком!</p>
+      <p class="winter-only">Пухомех готовится к празднику! Собери по заснеженному городку мандарины и сладости.<br>Берегись собак — они гоняются за котиком!</p>
       <p class="touch-only small">Веди пальцем по экрану — котик побежит туда.</p>
       <p class="blink"><span class="kb-only">▶ Нажми любую клавишу</span><span class="touch-only">▶ Коснись, чтобы начать</span></p>
       <div id="title-board" class="board-wrap">

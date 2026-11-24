@@ -4,6 +4,9 @@ import { FLOATS_PER_INSTANCE as F } from './gpu.js';
 
 const CAT_BOX = 0.12;  // «след» котика для сортировки (меньше радиуса коллизии — так он никогда не «внутри» дома)
 const FOOD_BOX = 0.1;
+// Цвета огоньков гирлянды
+const BULBS = [[1, 0.3, 0.3], [0.35, 1, 0.45], [1, 0.9, 0.3], [0.4, 0.7, 1]];
+const mod = (a, m) => ((a % m) + m) % m;
 
 export class Scene {
   constructor(atlas, level, max = 8192) {
@@ -13,11 +16,22 @@ export class Scene {
     this.data = new Float32Array(max * F);
     this.n = 0;
     this.cam = null;
+    this.winter = false; // новогодний режим: спрайты с префиксом w_, снег, гирлянды
+    this.themed = new Map();
+    this.flakes = [];
+  }
+
+  // Имя спрайта с учётом темы: зимой берём `w_имя`, если такой есть
+  tn(name) {
+    if (!this.winter) return name;
+    let r = this.themed.get(name);
+    if (r === undefined) { r = this.atlas.sprites[`w_${name}`] ? `w_${name}` : name; this.themed.set(name, r); }
+    return r;
   }
 
   put(name, x, y, tint, fx) {
     if (this.n >= this.max) return;
-    const s = this.atlas.sprites[name], d = this.data, o = this.n++ * F;
+    const s = this.atlas.sprites[this.tn(name)], d = this.data, o = this.n++ * F;
     const AW = this.atlas.width, AH = this.atlas.height;
     d[o] = Math.round(x) - s.ax; d[o + 1] = Math.round(y) - s.ay; d[o + 2] = s.w; d[o + 3] = s.h;
     d[o + 4] = s.x / AW; d[o + 5] = s.y / AH; d[o + 6] = (s.x + s.w) / AW; d[o + 7] = (s.y + s.h) / AH;
@@ -26,7 +40,7 @@ export class Scene {
   }
 
   rectOf(name, x, y) {
-    const s = this.atlas.sprites[name];
+    const s = this.atlas.sprites[this.tn(name)];
     const rx0 = Math.round(x) - s.ax, ry0 = Math.round(y) - s.ay;
     return { rx0, ry0, rx1: rx0 + s.w, ry1: ry0 + s.h };
   }
@@ -50,7 +64,7 @@ export class Scene {
     const wf = Math.floor(t * 2) % 2;
     for (const g of level.ground) {
       const name = g.frames ? g.frames[wf] : g.name;
-      const s = this.atlas.sprites[name];
+      const s = this.atlas.sprites[this.tn(name)];
       const x0 = g.sx - s.ax, y0 = g.sy - s.ay;
       if (vis(x0, y0, x0 + s.w, y0 + s.h)) this.put(name, g.sx, g.sy);
     }
@@ -108,8 +122,13 @@ export class Scene {
       });
     }
     for (const o of depthSort(objs)) {
-      if (o.draw) o.draw();
-      else this.put(o.frames ? o.frames[wf] : o.name, o.sx, o.sy);
+      if (o.draw) { o.draw(); continue; }
+      this.put((this.winter && o.winterName) || (o.frames ? o.frames[wf] : o.name), o.sx, o.sy);
+      // Гирлянда на крыше: бегущие разноцветные огоньки
+      if (this.winter && o.lights) {
+        const shift = Math.floor(t * 3);
+        o.lights.forEach(([lx, ly], i) => this.put('bulb', lx, ly, [...BULBS[(i + shift) % 4], 1], [0, 1]));
+      }
     }
 
     // 4. Частицы
@@ -117,21 +136,52 @@ export class Scene {
       const a = 1 - Math.max(0, (p.life - p.max * 0.6) / (p.max * 0.4));
       this.put(p.spr, p.x, p.y, [1, 1, 1, a], [0, 1]);
     }
+    // 5. Снегопад (только зимой). Снежинки живут в экранных координатах с параллаксом:
+    // ближние сдвигаются вместе с миром, дальние — медленнее.
+    if (this.winter) this.snow(W, H, t, dt, camX, camY);
     const nSprites = this.n;
 
-    // 5. Свечения (отдельный аддитивный пайплайн)
+    // 6. Свечения (отдельный аддитивный пайплайн, видны ночью)
     if (game.night > 0.01) {
       for (const o of objs) {
-        if (!o.glows) continue;
-        for (const [gx, gy, isFood] of o.glows) {
-          const flick = 0.85 + 0.15 * Math.sin(t * 9 + gx * 0.37) * Math.sin(t * 5.3 + gy);
-          this.put('glow', gx, gy, isFood ? [1.0, 0.9, 0.45, 0.6] : [1.0, 0.72, 0.38, 0.9 * flick]);
+        const glows = (this.winter && o.winterGlows) || o.glows;
+        if (glows) {
+          for (const [gx, gy, kind, k = 0] of glows) {
+            const flick = 0.85 + 0.15 * Math.sin(t * 9 + gx * 0.37) * Math.sin(t * 5.3 + gy);
+            let tint = [1.0, 0.72, 0.38, 0.9 * flick];
+            if (kind === true) tint = [1.0, 0.9, 0.45, 0.6]; // еда
+            if (kind === 'tree') tint = [...BULBS[(k + Math.floor(t * 2)) % 4], 0.7];
+            if (kind === 'star') tint = [1.0, 0.9, 0.5, 0.9];
+            this.put(kind === 'tree' ? 'glow_s' : 'glow', gx, gy, tint);
+          }
+        }
+        if (this.winter && o.lights) {
+          const shift = Math.floor(t * 3);
+          o.lights.forEach(([lx, ly], i) => { if (i % 2 === 0) this.put('glow_s', lx, ly, [...BULBS[(i + shift) % 4], 0.8]); });
         }
       }
     }
     return { nSprites, nGlow: this.n - nSprites, camX, camY };
   }
 }
+
+Scene.prototype.snow = function (W, H, t, dt, camX, camY) {
+  const want = Math.min(320, Math.round((W * H) / 300));
+  while (this.flakes.length < want) {
+    this.flakes.push({
+      x: Math.random() * W, y: Math.random() * H,
+      vy: 10 + Math.random() * 16, drift: 4 + Math.random() * 8, ph: Math.random() * 6.28,
+      par: 0.6 + Math.random() * 0.4, big: Math.random() < 0.25,
+    });
+  }
+  this.flakes.length = want;
+  for (const f of this.flakes) {
+    f.y += f.vy * dt;
+    f.x += Math.sin(t * 1.3 + f.ph) * f.drift * dt;
+    const sx = camX + mod(f.x - camX * f.par, W), sy = camY + mod(f.y - camY * f.par, H);
+    this.put(f.big ? 'flake2' : 'flake1', sx, sy, [1, 1, 1, f.big ? 0.9 : 0.75], [0, 0.6]);
+  }
+};
 
 // Топологическая сортировка по «следам» на земле — классика изометрических движков.
 // a рисуется раньше b, если a целиком «за» b по одной из осей и их картинки пересекаются.

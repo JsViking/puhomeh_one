@@ -40,6 +40,9 @@ canvas {
   .kb-only { display: none !important; }
 }
 
+/* Тексты для новогоднего и обычного режима */
+body:not(.winter) .winter-only, body.winter .standard-only { display: none !important; }
+
 /* Окна в духе JRPG 90-х: синий градиент и двойная белая рамка */
 .box, .window, .tool, .meow {
   background: linear-gradient(#2e3f96, #141c52);
@@ -53,7 +56,7 @@ canvas {
   position: fixed;
   top: var(--sat);
   left: var(--sal);
-  right: calc(var(--sar) + 160px); /* не наезжаем на панель кнопок справа */
+  right: calc(var(--sar) + 270px); /* не наезжаем на панель кнопок справа */
   display: flex;
   flex-wrap: wrap;
   gap: 12px;

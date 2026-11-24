@@ -44,11 +44,23 @@ async function main() {
 
   let paused = false; // пока открыто окно отзыва
 
+  // ---- Тема: новогодняя (по умолчанию) или обычная ----
+  const THEME_KEY = 'nekomachi.theme';
+  let theme = 'winter';
+  try { if (localStorage.getItem(THEME_KEY) === 'standard') theme = 'standard'; } catch { /* приватный режим */ }
+  const applyTheme = () => {
+    scene.winter = theme === 'winter';
+    document.body.classList.toggle('winter', scene.winter);
+    sfx.setSong(theme);
+  };
+  applyTheme();
+
   // ---- Действия (общие для клавиатуры, мыши и пальца) ----
   const syncButtons = () => {
     $('btn-night').classList.toggle('on', !!game.nightTarget);
     $('btn-music').classList.toggle('off', !sfx.isMusicOn());
     $('btn-crt').classList.toggle('off', !crt);
+    $('btn-theme').classList.toggle('on', theme === 'winter');
   };
   const actions = {
     start: () => { if (game.phase === 'title') game.start(); },
@@ -57,6 +69,12 @@ async function main() {
     music: () => { sfx.toggleMusic(); syncButtons(); },
     crt: () => { crt = crt ? 0 : 1; syncButtons(); },
     meow: () => { if (game.phase === 'play') game.meow(); },
+    theme: () => {
+      theme = theme === 'winter' ? 'standard' : 'winter';
+      try { localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
+      applyTheme();
+      syncButtons();
+    },
   };
   syncButtons();
 
@@ -75,6 +93,7 @@ async function main() {
     if (e.code === 'KeyN') actions.night();
     if (e.code === 'KeyC') actions.crt();
     if (e.code === 'KeyM') actions.music();
+    if (e.code === 'KeyT') actions.theme();
     if (e.code === 'Space') actions.meow();
     if (e.code === 'KeyR') actions.restart();
   });
@@ -88,7 +107,7 @@ async function main() {
   addEventListener('pointerup', sfx.init);
   $('title').addEventListener('pointerdown', () => { sfx.init(); actions.start(); });
   document.querySelectorAll('.again').forEach((b) => b.addEventListener('click', () => { sfx.init(); actions.restart(); }));
-  for (const [id, fn] of [['btn-night', actions.night], ['btn-music', actions.music], ['btn-crt', actions.crt], ['btn-meow', actions.meow]]) {
+  for (const [id, fn] of [['btn-night', actions.night], ['btn-music', actions.music], ['btn-crt', actions.crt], ['btn-theme', actions.theme],['btn-meow', actions.meow]]) {
     const b = $(id);
     // pointerdown — мгновенный отклик; preventDefault — кнопка не забирает фокус (иначе Пробел нажимал бы её)
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); sfx.init(); fn(); });

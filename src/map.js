@@ -5,7 +5,7 @@
 //  T  сакура   P  сосна   L  каменный фонарь   S  лавка-ятай   B  живая изгородь
 //  @  старт котика.  Еда расставляется случайно при каждом старте (см. game.js).
 import { toScreen } from './iso.js';
-import { hash } from './raster.js';
+import { hash, frac } from './raster.js';
 
 export const MAP = [
   'PBBTBBBBPBBBB~~BBTBP',
@@ -33,6 +33,7 @@ export const MAP = [
 const HOUSES = { A: 'house_blue', C: 'house_red', D: 'house_green' };
 const SOLID = new Set(['~', 'A', 'C', 'D', 'F', 'T', 'P', 'L', 'S', 'B']);
 export const FOOD_KINDS = ['fish', 'onigiri', 'milk', 'dango', 'tin'];
+const SNOWMEN = new Set(['2,11', '3,16']); // клетки фонарей, где зимой стоят снеговики
 
 export function buildLevel(atlas) {
   const H = MAP.length, W = MAP[0].length;
@@ -43,17 +44,29 @@ export function buildLevel(atlas) {
   const used = new Set();
   let start = { x: W / 2, y: H / 2 };
 
-  // Статический объект: спрайт рисуется от угла тайла (ox, oy); box — «след» на земле для сортировки
+  // Статический объект: спрайт рисуется от угла тайла (ox, oy); box — «след» на земле для сортировки.
+  // Экранный прямоугольник — объединение обычного и зимнего спрайта (ёлка выше фонтана).
   const addObj = (name, ox, oy, box, extra = {}) => {
     const frames = Array.isArray(name) ? name : null;
-    const s = atlas.sprites[frames ? frames[0] : name];
+    const base = frames ? frames[0] : name;
     const [sx, sy] = toScreen(ox, oy);
+    const variants = [base, `w_${base}`, extra.winterName].filter((n) => n && atlas.sprites[n]).map((n) => atlas.sprites[n]);
     objects.push({
       name, frames, sx, sy,
       x0: box[0], y0: box[1], x1: box[2], y1: box[3],
-      rx0: sx - s.ax, ry0: sy - s.ay, rx1: sx - s.ax + s.w, ry1: sy - s.ay + s.h,
+      rx0: Math.min(...variants.map((s) => sx - s.ax)), ry0: Math.min(...variants.map((s) => sy - s.ay)),
+      rx1: Math.max(...variants.map((s) => sx - s.ax + s.w)), ry1: Math.max(...variants.map((s) => sy - s.ay + s.h)),
       glows: [], ...extra,
     });
+  };
+
+  // Гирлянда по краю крыши дома (для новогоднего режима): фронтальный карниз и скат фронтона
+  const garland = (x, y) => {
+    const pts = [];
+    for (let u = -0.15; u <= 2.16; u += 0.23) pts.push(toScreen(x + u, y + 2.27, 19.3 - 1.2 * Math.sin(Math.PI * frac((u + 0.15) / 0.46))));
+    const zr = (v) => 20 + 13 * (1 - Math.abs(v - 1) / 1.25);
+    for (let v = -0.2; v <= 2.21; v += 0.24) pts.push(toScreen(x + 2.27, y + v, zr(v) - 0.6));
+    return pts;
   };
 
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -80,14 +93,28 @@ export function buildLevel(atlas) {
     const key = `${x},${y}`;
     if ((HOUSES[ch] || ch === 'F') && !used.has(key)) {
       for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) used.add(`${x + dx},${y + dy}`);
-      if (ch === 'F') addObj(['fountain0', 'fountain1'], x, y, [x, y, x + 2, y + 2]);
-      else addObj(HOUSES[ch], x, y, [x, y, x + 2, y + 2], { glows: [toScreen(x + 0.55, y + 2, 13), toScreen(x + 2, y + 1.45, 13)] });
+      if (ch === 'F') {
+        // Зимой здесь стоит ёлка: вокруг неё разноцветные отсветы огоньков
+        const treeGlows = [];
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2, r = 0.5 - (k % 3) * 0.12;
+          treeGlows.push([...toScreen(x + 1 + r * Math.cos(a), y + 1 + r * Math.sin(a), 14 + (k % 3) * 12), 'tree', k]);
+        }
+        treeGlows.push([...toScreen(x + 1, y + 1, 57), 'star']);
+        addObj(['fountain0', 'fountain1'], x, y, [x, y, x + 2, y + 2], { winterGlows: treeGlows });
+      } else {
+        addObj(HOUSES[ch], x, y, [x, y, x + 2, y + 2], { glows: [toScreen(x + 0.55, y + 2, 13), toScreen(x + 2, y + 1.45, 13)], lights: garland(x, y) });
+      }
     }
     const one = [x, y, x + 1, y + 1];
     if (ch === 'T') addObj('sakura', x, y, one);
     if (ch === 'P') addObj('pine', x, y, one);
     if (ch === 'B') addObj('hedge', x, y, one);
-    if (ch === 'L') addObj('lantern', x, y, one, { glows: [toScreen(x + 0.5, y + 0.5, 16)] });
+    if (ch === 'L') {
+      // Два фонаря в новогоднем режиме превращаются в снеговиков
+      const snowy = SNOWMEN.has(`${x},${y}`);
+      addObj('lantern', x, y, one, { glows: [toScreen(x + 0.5, y + 0.5, 16)], ...(snowy && { winterName: 'snowman', winterGlows: [] }) });
+    }
     if (ch === 'S') addObj(hash(x, y, 7) < 0.5 ? 'stall0' : 'stall1', x, y, one, { glows: [toScreen(x + 0.86, y + 1, 13)] });
     if (ch === '@') start = { x: x + 0.5, y: y + 0.5 };
   }
