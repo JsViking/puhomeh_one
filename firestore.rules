@@ -24,6 +24,23 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Отзывы: игроки могут только отправлять. Читать — только владелец проекта в консоли Firebase.
+    match /feedback/{feedbackId} {
+      allow create: if
+        request.resource.data.keys().hasOnly(['text', 'contact', 'ua', 'createdAt']) &&
+        request.resource.data.keys().hasAll(['text', 'ua', 'createdAt']) &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() >= 3 &&
+        request.resource.data.text.size() <= 1000 &&
+        (!('contact' in request.resource.data) ||
+          (request.resource.data.contact is string && request.resource.data.contact.size() <= 100)) &&
+        request.resource.data.ua is string &&
+        request.resource.data.ua.size() <= 300 &&
+        request.resource.data.createdAt == request.time;
+
+      allow read, update, delete: if false;
+    }
+
     // Всё остальное в базе закрыто
     match /{document=**} {
       allow read, write: if false;

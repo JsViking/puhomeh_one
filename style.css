@@ -192,6 +192,29 @@ h3 { margin: 0 0 6px; font-size: 18px; font-weight: normal; color: #ffd25e; }
 .window input { width: 12em; max-width: 60%; user-select: text; -webkit-user-select: text; }
 .window input:focus { outline: 2px solid #ffd25e; }
 .window button { cursor: pointer; background: #2e3f96; }
+#feedback { z-index: 6; }
+#feedback textarea, #feedback input {
+  display: block;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  margin: 8px 0;
+}
+.window textarea {
+  font: inherit;
+  font-size: 16px;
+  color: #fff;
+  background: #0b1036;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  padding: 6px 10px;
+  resize: vertical;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+}
+.window textarea:focus { outline: 2px solid #ffd25e; }
+.window button:disabled { opacity: 0.5; cursor: default; }
 .window button.again { color: #ffd25e; font-size: 20px; padding: 8px 20px; }
 
 /* Телефон в портрете */

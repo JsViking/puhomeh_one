@@ -26,6 +26,7 @@
     <button id="btn-night" class="tool" tabindex="-1" title="День / ночь (N)" aria-label="День или ночь">☾</button>
     <button id="btn-music" class="tool" tabindex="-1" title="Музыка (M)" aria-label="Музыка">♪</button>
     <button id="btn-crt" class="tool" tabindex="-1" title="CRT-эффект (C)" aria-label="CRT-эффект">TV</button>
+    <button id="btn-feedback" class="tool" tabindex="-1" title="Написать отзыв" aria-label="Написать отзыв">✉</button>
   </div>
 
   <!-- Только на сенсорных экранах -->
@@ -73,6 +74,19 @@
       <p>Собрано еды: <span id="lose-score" class="label">0/12</span></p>
       <p><button type="button" class="again">▶ Попробовать ещё <span class="kb-only">(R)</span></button></p>
     </div>
+  </div>
+
+  <div id="feedback" class="overlay hidden">
+    <form id="feedback-form" class="window" autocomplete="off">
+      <h2>Отзыв</h2>
+      <p class="small">Что понравилось, что сломалось, чего не хватает? Игра на паузе.</p>
+      <textarea id="feedback-text" maxlength="1000" rows="5" placeholder="Твой отзыв…" required></textarea>
+      <input id="feedback-contact" maxlength="100" placeholder="Как с тобой связаться (необязательно)">
+      <p class="small">Вместе с отзывом отправится название твоего браузера — это помогает чинить ошибки.</p>
+      <p id="feedback-status" class="label"></p>
+      <button type="submit" id="feedback-send">Отправить</button>
+      <button type="button" id="feedback-close">Закрыть</button>
+    </form>
   </div>
 
   <div id="nogpu" class="overlay hidden">

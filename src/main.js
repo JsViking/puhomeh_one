@@ -7,6 +7,7 @@ import { Scene } from './scene.js';
 import * as sfx from './audio.js';
 import * as board from './leaderboard.js';
 import { createJoystick } from './touch.js';
+import * as online from './online.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('gfx');
@@ -41,6 +42,8 @@ async function main() {
   addEventListener('resize', resize);
   resize();
 
+  let paused = false; // пока открыто окно отзыва
+
   // ---- Действия (общие для клавиатуры, мыши и пальца) ----
   const syncButtons = () => {
     $('btn-night').classList.toggle('on', !!game.nightTarget);
@@ -61,7 +64,9 @@ async function main() {
   const keys = new Set();
   const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
   addEventListener('keydown', (e) => {
-    if (e.target instanceof HTMLInputElement) return; // печатаем имя для рекорда — игра не слушает
+    // Печатаем имя или отзыв — игра клавиши не слушает
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (paused) return;
     if (GAME_KEYS.includes(e.code)) e.preventDefault();
     sfx.init();
     keys.add(e.code);
@@ -89,6 +94,45 @@ async function main() {
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); sfx.init(); fn(); });
     b.addEventListener('click', (e) => { if (e.detail === 0) fn(); }); // активация с клавиатуры/читалки экрана
   }
+
+  // ---- Отзыв ----
+  const fb = { box: $('feedback'), form: $('feedback-form'), text: $('feedback-text'), contact: $('feedback-contact'), status: $('feedback-status'), send: $('feedback-send') };
+  const openFeedback = () => {
+    paused = true;
+    keys.clear();
+    fb.status.textContent = '';
+    fb.send.disabled = false;
+    fb.box.classList.remove('hidden');
+    if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => fb.text.focus(), 0);
+  };
+  const closeFeedback = () => {
+    fb.box.classList.add('hidden');
+    document.activeElement?.blur();
+    paused = false;
+  };
+  $('btn-feedback').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); openFeedback(); });
+  $('btn-feedback').addEventListener('click', (e) => { if (e.detail === 0) openFeedback(); });
+  $('feedback-close').addEventListener('click', closeFeedback);
+  fb.box.addEventListener('pointerdown', (e) => { if (e.target === fb.box) closeFeedback(); }); // тап мимо окна
+  fb.form.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFeedback(); });
+  fb.form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = fb.text.value.trim(), contact = fb.contact.value.trim();
+    if (text.length < 3) { fb.status.textContent = 'Напиши хотя бы пару слов 🙂'; return; }
+    fb.send.disabled = true;
+    fb.status.textContent = 'Отправляю…';
+    try {
+      if (!online.enabled()) throw new Error('Firebase не настроен (src/firebase-config.js)');
+      await Promise.race([online.addFeedback({ text, contact }), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]);
+      fb.status.textContent = 'Спасибо! Отзыв отправлен 💌';
+      fb.text.value = '';
+      setTimeout(() => { if (!fb.box.classList.contains('hidden')) closeFeedback(); }, 1500);
+    } catch (err) {
+      console.warn('[отзыв]', err);
+      fb.status.textContent = 'Не получилось отправить. Проверь интернет и попробуй ещё раз.';
+      fb.send.disabled = false;
+    }
+  });
 
   const readInput = () => (joystick.active ? joystick.vec : {
     x: (pressed('KeyD', 'ArrowRight') ? 1 : 0) - (pressed('KeyA', 'ArrowLeft') ? 1 : 0),
@@ -183,7 +227,7 @@ async function main() {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     const t = now / 1000;
-    game.update(dt, readInput());
+    if (!paused) game.update(dt, readInput());
     sfx.setNight(game.night);
     const { nSprites, nGlow, camX, camY } = scene.build(game, renderer.lowW, renderer.lowH, t, dt);
     renderer.render(scene.data, nSprites, nGlow, { camX, camY, time: t, night: game.night, crt });

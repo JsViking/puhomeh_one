@@ -29,6 +29,14 @@ export async function fetchTop(limit) {
   return snap.docs.map((d) => ({ id: d.id, name: String(d.data().name), time: Number(d.data().time) }));
 }
 
+// Отзыв игрока. Читать отзывы из игры нельзя — только в консоли Firebase (см. firestore.rules).
+export async function addFeedback({ text, contact }) {
+  const { fs, db } = await connect();
+  const doc = { text, ua: navigator.userAgent.slice(0, 300), createdAt: fs.serverTimestamp() };
+  if (contact) doc.contact = contact;
+  await fs.addDoc(fs.collection(db, 'feedback'), doc);
+}
+
 // Формат документа строго совпадает с проверками в firestore.rules
 export async function addScore(name, time) {
   const { fs, db } = await connect();
