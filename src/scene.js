@@ -59,7 +59,13 @@ export class Scene {
     const foods = game.foods.filter((f) => !f.taken);
     this.put('shadow', csx, csy, [1, 1, 1, 0.3]);
     for (const d of game.dogs) { const [x, y] = toScreen(d.x, d.y); this.put('shadow', x, y, [1, 1, 1, 0.3]); }
-    for (const f of foods) { const [x, y] = toScreen(f.x, f.y); this.put('shadow_s', x, y, [1, 1, 1, 0.25]); }
+    for (const f of foods) {
+      const [x, y] = toScreen(f.x, f.y);
+      // Пульсирующее золотое кольцо на земле: еду видно издалека и ночью (emissive)
+      const pulse = 0.55 + 0.45 * Math.sin(t * 4 + f.phase);
+      this.put('ring', x, y, [1, 1, 1, pulse], [0, 1]);
+      this.put('shadow_s', x, y, [1, 1, 1, 0.25]);
+    }
 
     // 3. Объекты
     const objs = level.objects.filter((o) => vis(o.rx0, o.ry0, o.rx1, o.ry1));
@@ -86,15 +92,19 @@ export class Scene {
     }
     for (const f of foods) {
       const [fx, fy] = toScreen(f.x, f.y);
-      const lift = Math.round(5 + Math.sin(t * 3 + f.phase) * 2);
+      const lift = Math.round(7 + Math.sin(t * 3 + f.phase) * 3);
       const name = `food_${f.kind}`;
+      // Короткая белая вспышка раз в пару секунд — «блик», привлекающий взгляд
+      const glint = Math.pow(Math.max(0, Math.sin(t * 2.2 + f.phase)), 12) * 0.7;
       objs.push({
         x0: f.x - FOOD_BOX, y0: f.y - FOOD_BOX, x1: f.x + FOOD_BOX, y1: f.y + FOOD_BOX,
         ...this.rectOf(name, fx, fy - lift),
         draw: () => {
-          this.put(name, fx, fy - lift, null, [0, 0.7]);
-          if (Math.sin(t * 2.3 + f.phase * 5) > 0.9) this.put('sparkle', fx + 5, fy - lift - 12, null, [0, 1]);
+          this.put(name, fx, fy - lift, null, [glint, 0.8]);
+          if (Math.sin(t * 2.3 + f.phase * 5) > 0.7) this.put('sparkle', fx + 6, fy - lift - 13, null, [0, 1]);
+          if (Math.sin(t * 1.7 + f.phase * 3) > 0.8) this.put('sparkle', fx - 7, fy - lift - 4, null, [0, 1]);
         },
+        glows: [[fx, fy - 6, true]],
       });
     }
     for (const o of depthSort(objs)) {
@@ -113,9 +123,9 @@ export class Scene {
     if (game.night > 0.01) {
       for (const o of objs) {
         if (!o.glows) continue;
-        for (const [gx, gy] of o.glows) {
+        for (const [gx, gy, isFood] of o.glows) {
           const flick = 0.85 + 0.15 * Math.sin(t * 9 + gx * 0.37) * Math.sin(t * 5.3 + gy);
-          this.put('glow', gx, gy, [1.0, 0.72, 0.38, 0.9 * flick]);
+          this.put('glow', gx, gy, isFood ? [1.0, 0.9, 0.45, 0.6] : [1.0, 0.72, 0.38, 0.9 * flick]);
         }
       }
     }

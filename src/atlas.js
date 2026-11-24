@@ -391,6 +391,24 @@ function ellipse(w, h) {
   return gridSprite(rows, { k: [0, 0, 0] }, { ax: w >> 1, ay: h >> 1, outline: false });
 }
 
+// Золотое кольцо на земле под едой — чтобы её было видно издалека
+function ring(w, h) {
+  const rows = [];
+  const inside = (x, y, rx, ry) => {
+    const dx = (x + 0.5 - w / 2) / rx, dy = (y + 0.5 - h / 2) / ry;
+    return dx * dx + dy * dy <= 1;
+  };
+  for (let y = 0; y < h; y++) {
+    let r = '';
+    for (let x = 0; x < w; x++) {
+      const outer = inside(x, y, w / 2, h / 2), inner = inside(x, y, w / 2 - 2, h / 2 - 1);
+      r += outer && !inner ? 'y' : outer ? 'l' : '.';
+    }
+    rows.push(r);
+  }
+  return gridSprite(rows, { y: hex('#ffd25e'), l: [255, 240, 170, 90] }, { ax: w >> 1, ay: h >> 1, outline: false });
+}
+
 // Мягкое свечение фонаря с дизерингом Байера (ретро-градиент)
 function glow(size) {
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
@@ -427,6 +445,7 @@ export function buildAtlas() {
   S.sparkle = gridSprite(['..y..', '..y..', 'yyWyy', '..y..', '..y..'], { y: hex('#fff6a0'), W: hex('#ffffff') }, { ax: 2, ay: 2, outline: false });
   S.shadow = ellipse(18, 7);
   S.shadow_s = ellipse(11, 4);
+  S.ring = ring(22, 9);
   S.glow = glow(48);
 
   // Простая «полочная» упаковка с 1px зазором (чтобы nearest-семплинг не цеплял соседей)
